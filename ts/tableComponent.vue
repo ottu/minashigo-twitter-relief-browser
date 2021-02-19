@@ -6,45 +6,64 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, toRefs } from '@vue/composition-api'
+import { defineComponent, reactive, toRefs, watch, onMounted } from '@vue/composition-api'
 
 interface Dict { [key: string]: string }
 
-interface Data {
+interface State {
     message: string;
     columns: Dict[];
     data: Dict[];
 }
 
 export default defineComponent({
-    setup() {
-        const state = reactive<Data>({
+    setup(props) {
+        const state = reactive<State>({
             message: "Hello Minashigo!",
             columns: [
                 {
-                    field: 'name',
+                    field: 'Name',
                     label: "名前",                
                 },
                 {
-                    field: 'level',
+                    field: 'Lv',
                     label: "難易度"
                 },
                 {
-                    field: 'id',
+                    field: 'ID',
                     label: "ID",
                 }
             ],
-            data: [
-                { 'name': "ラグナロク", 'level': "HARD", 'id': '0000000000' },
-                { 'name': "ラグナロク", 'level': "NORMAL", 'id': '1111111111' },
-                { 'name': "ラグナロク", 'level': "EASY", 'id': '2222222222' },
-            ],
+            data: [],
         });
 
         const myEvent = (e: Object) => {
             console.log(e);
-        }
+        };
 
+        watch(() => state.data, 
+            (newValue, oldValue) => {
+                //console.log(`${oldValue} -> ${newValue}`);
+            }
+        );
+
+        onMounted(()=>{
+            let ws = new WebSocket('ws://192.168.2.9:8080/ws');
+            ws.onopen = (e) => {
+                console.log(e)
+                ws.send("connected")
+            }
+
+            ws.onmessage = (e) => {
+                //console.log(e)
+                let j = JSON.parse(e.data);
+                //console.log(j)
+                state.data.unshift(j);
+                if (state.data.length > 20) {
+                    state.data.length = 20
+                }
+            }
+        });
         return {
             ...toRefs(state),
             myEvent
@@ -52,38 +71,4 @@ export default defineComponent({
     }
 })
 
-
-//export default Vue.extend({
-//    data() {
-//        return {
-//            message: "Hello Minashigo!",
-//            columns: [
-//                {
-//                    field: 'name',
-//                    label: "名前",                
-//                },
-//                {
-//                    field: 'level',
-//                    label: "難易度"
-//                },
-//                {
-//                    field: 'id',
-//                    label: "ID",
-//                }
-//            ],
-//            data: [
-//                { 'name': "ラグナロク", 'level': "HARD", 'id': '0000000000' },
-//                { 'name': "ラグナロク", 'level': "NORMAL", 'id': '1111111111' },
-//                { 'name': "ラグナロク", 'level': "EASY", 'id': '2222222222' },
-//            ],
-//            methods: {
-//                myEvent() {
-//                    console.log("test2");
-//                },
-//                myFunc: () => { return "test"; }
-//            }
-//        }
-//    }
-//})
-//</script>
-//
+</script>
