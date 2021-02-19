@@ -9,16 +9,16 @@
             <span>{{name}}</span>
         </div>
         <div class="panel-block">
-            <button class="button is-rounded is-fullwidth is-small">EASY</button>
+            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">EASY</button>
         </div>
         <div class="panel-block">
-            <button class="button is-rounded is-fullwidth is-small">NORMAL</button>
+            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">NORMAL</button>
         </div>
         <div class="panel-block">
-            <button class="button is-rounded is-fullwidth is-small">HARD</button>
+            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">HARD</button>
         </div>
         <div class="panel-block">
-            <button class="button is-rounded is-fullwidth is-small">EXPERT</button>
+            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">EXPERT</button>
         </div>
     </div>
 </template>
@@ -29,10 +29,27 @@ import { defineComponent, PropType } from '@vue/composition-api'
 export default defineComponent({
     props: {
         name: {
-            type: Object as PropType<string>
+            type: String
         },
         icon: {
-            type: Object as PropType<string>
+            type: String
+        },
+        color: {
+            type: String
+        }
+    },
+    setup() {
+        const onClick = (e: MouseEvent)=> {
+            let target = e.currentTarget as HTMLElement;
+            if (target.classList.contains("is-light")) {
+                target.classList.remove("is-light")
+            } else {
+                target.classList.add("is-light")
+            }
+        };
+
+        return {
+            onClick
         }
     }
 })

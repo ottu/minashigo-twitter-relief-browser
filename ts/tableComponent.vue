@@ -1,6 +1,5 @@
 <template>
     <div id="table-component">
-        {{message}}
         <b-table :data="data" :columns="columns" @click="myEvent" />
     </div>
 </template>
@@ -10,16 +9,14 @@ import { defineComponent, reactive, toRefs, watch, onMounted } from '@vue/compos
 
 interface Dict { [key: string]: string }
 
-interface State {
-    message: string;
+interface TableData {
     columns: Dict[];
     data: Dict[];
 }
 
 export default defineComponent({
     setup() {
-        const state = reactive<State>({
-            message: "Hello Minashigo!",
+        const tableData = reactive<TableData>({
             columns: [
                 {
                     field: 'Name',
@@ -41,7 +38,7 @@ export default defineComponent({
             console.log(e);
         };
 
-        watch(() => state.data, 
+        watch(() => tableData.data, 
             (newValue, oldValue) => {
                 //console.log(`${oldValue} -> ${newValue}`);
             }
@@ -58,14 +55,14 @@ export default defineComponent({
                 //console.log(e)
                 let j = JSON.parse(e.data);
                 //console.log(j)
-                state.data.unshift(j);
-                if (state.data.length > 20) {
-                    state.data.length = 20
+                tableData.data.unshift(j);
+                if (tableData.data.length > 20) {
+                    tableData.data.length = 20
                 }
             }
         });
         return {
-            ...toRefs(state),
+            ...toRefs(tableData),
             myEvent
         }
     }

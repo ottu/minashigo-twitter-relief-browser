@@ -12,7 +12,13 @@
                     </span>
                 </p>
             </div>
-            <search-target-component v-for="target in targets" :key="target.id" :name="target.name" :icon="target.icon"></search-target-component>
+            <search-target-component
+                v-for="target in targets"
+                :key="target.id"
+                :name="target.name"
+                :icon="target.icon"
+                :color="target.color">
+            </search-target-component>
         </nav>
     </div>
 </template>
@@ -21,10 +27,16 @@
 import { defineComponent, reactive, toRefs, ref } from '@vue/composition-api'
 import searchTargetComponent from './searchTargetComponent.vue'
 
+
 interface Target {
     id: number,
     name: string,
     icon: string,
+    color: string,
+}
+
+interface PanelData {
+    targets: Target[]
 }
 
 export default defineComponent({
@@ -32,41 +44,48 @@ export default defineComponent({
         "search-target-component": searchTargetComponent
     },
     setup() {
-        const targets = reactive<Target[]>([
+        const panelData = reactive<PanelData>({
+            "targets": [
             {
                 id: 0,
                 name: "ラグナロク",
-                icon: "fire"
+                icon: "fire",
+                color: "is-danger"
             },
             {
                 id: 1,
                 name: "ギガントマキア",
-                icon: "water"
+                icon: "water",
+                color: "is-info"
             },
             {
                 id: 2,
                 name: "カタストロフ",
-                icon: "wind"
+                icon: "wind",
+                color: "is-success"
             },
             {
                 id: 3,
                 name: "ユガ",
-                icon: "bolt"
+                icon: "bolt",
+                color: "is-warning"
             },
             {
                 id: 4,
                 name: "エデン",
-                icon: "sun"
+                icon: "sun",
+                color: ""
             },
             {
                 id: 5,
                 name: "ミッドウェー",
-                icon: "moon"
+                icon: "moon",
+                color: "is-link"
             }
-        ]);
+        ]});
 
         return {
-            ...toRefs({targets})
+            ...toRefs(panelData)
         };
     }
 })
