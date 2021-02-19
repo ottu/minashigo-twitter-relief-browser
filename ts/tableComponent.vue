@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div id="table-component">
         {{message}}
         <b-table :data="data" :columns="columns" @click="myEvent" />
     </div>
@@ -17,7 +17,7 @@ interface State {
 }
 
 export default defineComponent({
-    setup(props) {
+    setup() {
         const state = reactive<State>({
             message: "Hello Minashigo!",
             columns: [
