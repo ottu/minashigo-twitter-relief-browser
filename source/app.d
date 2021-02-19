@@ -16,7 +16,21 @@ void safeWrite(string text)
 	}
 }
 
+// 文字列から救援IDを抽出
+JSONValue parseText(JSONValue json)
+{
+	typeof(return) result;
+	auto pattern = ctRegex!`救援ID:(?P<ID>[0-9]{10})\s参戦者募集！\s\s難易度:(?P<Lv>[A-Z]*)\s(?P<Name>.*)降臨！`;
+	auto m = matchFirst(json["text"].str, pattern);
 
+	result["ID"] = m[1];
+	result["Lv"] = m[2];
+	result["Name"] = m[3];
+
+	return result;
+}
+
+bool readTweetTerminateFlag = false;
 void readTweet()
 {
 	Twitter4D t4d = new Twitter4D([
@@ -32,45 +46,92 @@ void readTweet()
 	writeln("start tweet reading ...");
 	foreach(line; t4d.stream(url, params))
 	{
+		if(readTweetTerminateFlag) {
+			break;
+		}
+
+		writeln("stream readed...");
 		auto s = line.to!string;
-		writeln(s);
 		if(match(s, regex(r"\{.*\}"))){
 			auto j = parseJSON(s);
-			safeWrite(j.toPrettyString);
 
 			if ("media" in j["entities"]) { continue; }
 
-			wsSend(j.toPrettyString);
+			j = parseText(j);
+			wsSend(j.toString);
 		}
+	}
+	safeWrite("readTweet terminated.");
+}
+
+WebSocketWrapper [] wrappers;
+
+class WebSocketWrapper
+{
+	private WebSocket socket;
+	alias socket this;
+
+	bool waitTerminate = false;
+
+	this(WebSocket s)
+	{
+		socket = s;
+	}
+
+	void eventLoop()
+	{
+		while (socket.waitForData)
+		{
+			if (waitTerminate) { break; }
+
+			auto recieved = socket.receiveText;
+			safeWrite(recieved);
+		}
+		writeln("eventLoop exit");
 	}
 }
 
-WebSocket [] wss;
-
 void wsHandler(scope WebSocket socket)
 {
-	wss ~= socket;
-	while (socket.waitForData)
-	{
-		auto recieved = socket.receiveText;
-		safeWrite(recieved);
-	}
+	auto wrapper = new WebSocketWrapper(socket);
+	wrappers ~= wrapper;
+	wrapper.eventLoop();
 }
 
 void wsSend(string text)
 {
 	safeWrite(text);
-	foreach(s; wss)
+	foreach(s; wrappers)
 	{
+		if (!s.connected) { continue; }
 		s.send(text);
 	}
 }
 
+//void test()
+//{
+//	while(true)
+//	{
+//		sleep(dur!("seconds")(3));
+//
+//		foreach(s; wrappers) {
+//			if (s.connected) {
+//				wsSend("{'test':'aaa'}");
+//			}
+//		}
+//	}
+//}
+
 void main()
 {
-	readTweet();
-	//auto t = runTask(&readTweet);
-	//auto t = new Thread(()=>readTweet).start();
+	auto t = runTask(&readTweet);
+	//auto r = runTask(&test);
+	scope(exit)
+	{
+		readTweetTerminateFlag = true;
+		t.join();
+		//r.join();
+	}
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
@@ -82,7 +143,15 @@ void main()
 	router.get("*", serveStaticFiles("public/"));
 	router.get("/ws", handleWebSockets((a)=>wsHandler(a)));
 
-	listenHTTP(settings, router);
+	auto listener = listenHTTP(settings, router);
+	scope(exit) {
+		foreach(ws; wrappers) {
+			ws.waitTerminate = true;
+			ws.close();
+		}
+
+		listener.stopListening();
+	}
 
 	logInfo("application started.");
 	runApplication();
