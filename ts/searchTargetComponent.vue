@@ -8,23 +8,26 @@
             </span>
             <span>{{name}}</span>
         </div>
-        <div class="panel-block">
-            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">EASY</button>
-        </div>
-        <div class="panel-block">
-            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">NORMAL</button>
-        </div>
-        <div class="panel-block">
-            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">HARD</button>
-        </div>
-        <div class="panel-block">
-            <button :class="color" v-on:click="onClick" class="button is-rounded is-fullwidth is-small is-light">EXPERT</button>
-        </div>
+        <section>
+            <b-field>
+                <b-checkbox-button
+                    v-for='level of ["EASY", "NORMAL", "HARD", "EXPERT"]'
+                    :key='icon + "-" + level'
+                    v-model="injectionMethod"
+                    :native-value="level"
+                    :type="color"
+                    :input="checkboxGroup.includes(level)">
+                    {{level}}
+                </b-checkbox-button>
+            </b-field>
+        </section>
+        {{checkboxGroup}}
     </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from '@vue/composition-api'
+import { defineComponent, reactive, PropType, computed } from '@vue/composition-api'
+import UpdateHandlerInterface from './toolbox'
 
 export default defineComponent({
     props: {
@@ -36,9 +39,22 @@ export default defineComponent({
         },
         color: {
             type: String
+        },
+        checkboxGroup: {
+            type: Array as PropType<string[]>
+        },
+        updateHandler: {
+            type: Function as PropType<UpdateHandlerInterface>,
+            required: true
         }
     },
-    setup() {
+    setup(props) {
+
+        const injectionMethod = computed({
+            get: () => props.checkboxGroup,
+            set: (v) => props.updateHandler(props.name!, v!)
+        })
+
         const onClick = (e: MouseEvent)=> {
             let target = e.currentTarget as HTMLElement;
             if (target.classList.contains("is-light")) {
@@ -49,6 +65,7 @@ export default defineComponent({
         };
 
         return {
+            injectionMethod,
             onClick
         }
     }

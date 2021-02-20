@@ -23,7 +23,7 @@
             </template>
         </b-navbar>
         <div class="columns">
-            <div class="column is-3">
+            <div class="column is-4">
                 <panel-component></panel-component>
             </div>
             <div class="column">
