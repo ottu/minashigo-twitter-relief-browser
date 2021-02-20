@@ -27,7 +27,7 @@
                         <button class="button" @click="resetHandler">Reset</button>
                     </div>
                     <div class="column">
-                        <button class="button" @click="startHandler">Start</button>
+                        <button class="button" @click="execHandler">Start</button>
                     </div>
                 </div>
             </div>
@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, toRefs, ref } from '@vue/composition-api'
+import { defineComponent, reactive, toRefs, PropType } from '@vue/composition-api'
 import searchTargetComponent from './searchTargetComponent.vue'
-import UpdateHandlerInterface from './toolbox'
+import { UpdateHandlerInterface, StartHandlerInterface, FilterTarget, StopHandlerIterface } from './toolbox'
 
-interface Target {
+interface TargetSet {
     id: number,
     name: string,
     icon: string,
@@ -49,16 +49,26 @@ interface Target {
 }
 
 interface PanelData {
-    targets: Target[],
+    targets: TargetSet[],
 }
 
 export default defineComponent({
+    props: {
+        startHandler: {
+            type: Function as PropType<StartHandlerInterface>,
+            required: true
+        },
+        stopHandler: {
+            type: Function as PropType<StopHandlerIterface>,
+            required: true
+        }
+    },
     components: {
         "search-target-component": searchTargetComponent
     },
-    setup() {
+    setup(props) {
         const panelData = reactive<PanelData>({
-            "targets": [
+            targets: [
                 {
                     id: 0,
                     name: "ラグナロク",
@@ -105,17 +115,36 @@ export default defineComponent({
         });
 
         const resetHandler = (e: MouseEvent) => {
-            panelData.targets.forEach((t: Target)=>{
+            console.log("resetHandler")
+            panelData.targets.forEach((t: TargetSet)=>{
                 t.checkboxGroup = []
             })
+
+            props.stopHandler()
         };
 
-        const startHandler = (e: MouseEvent) => {
-            panelData.targets.forEach((a)=>console.log(a.checkboxGroup))
+        const execHandler = (e: MouseEvent) => {
+            console.log("execHandler")
+            let result: FilterTarget[] = []
+
+            panelData.targets.forEach((t: TargetSet) => {
+
+               t.checkboxGroup.forEach((s: string) => {
+                   let tmp: FilterTarget = {
+                       name: t.name,
+                       level: s
+                   }
+                   result.push(tmp)
+               }) 
+
+            })
+
+            props.startHandler(result)
         };
 
         const updateHandler: UpdateHandlerInterface = (name: string, value: string[]) => {
-            panelData.targets.forEach((t: Target)=>{
+            console.log("updateHandler")
+            panelData.targets.forEach((t: TargetSet)=>{
                 if (t.name == name) {
                     console.log(name)
                     console.log(value)
@@ -127,7 +156,7 @@ export default defineComponent({
         return {
             ...toRefs(panelData),
             resetHandler,
-            startHandler,
+            execHandler,
             updateHandler,
         };
     }

@@ -27,7 +27,7 @@
 
 <script lang="ts">
 import { defineComponent, reactive, PropType, computed } from '@vue/composition-api'
-import UpdateHandlerInterface from './toolbox'
+import { UpdateHandlerInterface } from './toolbox'
 
 export default defineComponent({
     props: {

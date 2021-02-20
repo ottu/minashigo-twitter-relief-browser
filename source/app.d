@@ -23,9 +23,9 @@ JSONValue parseText(JSONValue json)
 	auto pattern = ctRegex!`救援ID:(?P<ID>[0-9]{10})\s参戦者募集！\s\s難易度:(?P<Lv>[A-Z]*)\s(?P<Name>.*)降臨！`;
 	auto m = matchFirst(json["text"].str, pattern);
 
-	result["ID"] = m[1];
-	result["Lv"] = m[2];
-	result["Name"] = m[3];
+	result["id"] = m[1];
+	result["level"] = m[2];
+	result["name"] = m[3];
 
 	return result;
 }
