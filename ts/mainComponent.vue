@@ -23,11 +23,11 @@
             </template>
         </b-navbar>
         <div class="columns">
-            <div class="column is-4">
+            <div class="column is-narrow">
                 <panel-component :startHandler="startHandler" :stopHandler="stopHandler"></panel-component>
             </div>
             <div class="column">
-                <table-component :filters="mainData.filters" :recieveStream="mainData.recieveStream"></table-component>
+                <table-component :filters="mainData.filters" :receiveStream="mainData.receiveStream"></table-component>
             </div>
             <div class="column is-3">
                 <etc-component></etc-component>
@@ -49,7 +49,7 @@ import { FilterTarget, StartHandlerInterface, StopHandlerIterface } from './tool
 
 interface MainData {
     filters: FilterTarget[],
-    recieveStream: Boolean
+    receiveStream: Boolean
 }
 
 export default defineComponent({
@@ -61,18 +61,18 @@ export default defineComponent({
     setup() {
         let mainData = reactive<MainData>({
             filters: [],
-            recieveStream: false
+            receiveStream: false
         })
 
         const stopHandler: StopHandlerIterface = () => {
             console.log("stopHandler")
-            mainData.recieveStream = false
+            mainData.receiveStream = false
         }
 
         const startHandler: StartHandlerInterface = (args: FilterTarget[]) => {
             console.log("startHandler")
             mainData.filters = args
-            mainData.recieveStream = true
+            mainData.receiveStream = true
         }
 
         return {

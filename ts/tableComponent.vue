@@ -10,10 +10,10 @@ import { Dict, FilterTarget } from './toolbox'
 
 interface TableData {
     columns: Dict[];
-    items: RecieveTarget[];
+    items: ReceiveTarget[];
 }
 
-interface RecieveTarget {
+interface ReceiveTarget {
     id: string,
     level: string,
     name: string
@@ -21,7 +21,7 @@ interface RecieveTarget {
 
 export default defineComponent({
     props: {
-        recieveStream: {
+        receiveStream: {
             type: Boolean,
             default: false
         },
@@ -53,15 +53,15 @@ export default defineComponent({
             console.log(e);
         };
 
-        const filtersUnshift = (r: RecieveTarget) => {
+        const filtersUnshift = (r: ReceiveTarget) => {
             if (tableData.items.length > 19) {
                 tableData.items.length = 19
             }
             tableData.items.unshift(r)
         }
 
-        const filter = (r: RecieveTarget) => {
-            console.log("recieved")
+        const filter = (r: ReceiveTarget) => {
+            console.log("received")
             console.log(r)
 
             if (props.filters.length) {
@@ -77,9 +77,9 @@ export default defineComponent({
             }
         }
 
-        watch(() => props.recieveStream, 
+        watch(() => props.receiveStream, 
             (newValue, oldValue) => {
-                console.log("watch recieveStream")
+                console.log("watch receiveStream")
                 tableData.items = []
             }
         );
@@ -94,9 +94,9 @@ export default defineComponent({
 
             ws.onmessage = (e) => {
                 //console.log(e)
-                let j: RecieveTarget = JSON.parse(e.data);
+                let j: ReceiveTarget = JSON.parse(e.data);
                 //console.log(j)
-                if (props.recieveStream) {
+                if (props.receiveStream) {
                     filter(j)
                 }
             }
