@@ -7,6 +7,7 @@
 <script lang="ts">
 import { defineComponent, reactive, toRefs, watch, onMounted, PropType } from '@vue/composition-api'
 import { Dict, FilterTarget } from './toolbox'
+import settings from '../config/frontend.json'
 
 interface TableData {
     columns: Dict[];
@@ -50,7 +51,15 @@ export default defineComponent({
         });
 
         const myEvent = (e: Object) => {
-            console.log(e);
+            let t = e as ReceiveTarget;
+            navigator.clipboard.writeText(t.id).then(
+                () => {
+                    console.log(`Copied ID(${t.id}) to clipboard!`);
+                },
+                () => {
+                    console.log("Unable to write to clipboard...")
+                }
+            );
         };
 
         const filtersUnshift = (r: ReceiveTarget) => {
@@ -61,7 +70,6 @@ export default defineComponent({
         }
 
         const filter = (r: ReceiveTarget) => {
-            console.log("received")
             console.log(r)
 
             if (props.filters.length) {
@@ -86,7 +94,7 @@ export default defineComponent({
 
         onMounted(()=>{
             console.log("onMounted")
-            let ws = new WebSocket('ws://192.168.2.9:8080/ws');
+            let ws = new WebSocket(settings.websocketUrl);
             ws.onopen = (e) => {
                 console.log(e)
                 ws.send("connected")

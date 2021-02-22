@@ -140,6 +140,12 @@ void main()
 	settings.bindAddresses = ["::1", "0.0.0.0"];
 	settings.sessionStore = new MemorySessionStore;
 
+	debug {
+		settings.tlsContext = createTLSContext(TLSContextKind.server);
+		settings.tlsContext.useCertificateChainFile("./config/server.crt");
+		settings.tlsContext.usePrivateKeyFile("./config/server.key");
+	}
+
 	auto router = new URLRouter;
 	router.registerWebInterface(new WebService);
 	router.get("*", serveStaticFiles("public/"));

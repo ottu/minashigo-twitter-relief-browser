@@ -5,7 +5,11 @@
 	"copyright": "Copyright © 2021, ottu",
 	"dependencies": {
 		"twitter4d": "~>0.0.72",
-		"vibe-d": "~>0.9"
+		"vibe-d": "~>0.9",
+		"vibe-d:tls": "*"
+	},
+	"subConfigurations": {
+		"vibe-d:tls": "openssl"
 	},
 	"description": "A simple vibe.d server application.",
 	"license": "MIT",
