@@ -72,6 +72,7 @@ export default defineComponent({
         const startHandler: StartHandlerInterface = (args: FilterTarget[]) => {
             console.log("startHandler")
             mainData.filters = args
+            mainData.receiveStream = false
             mainData.receiveStream = true
         }
 
