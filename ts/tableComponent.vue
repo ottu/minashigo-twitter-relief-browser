@@ -1,11 +1,17 @@
 <template>
     <div id="table-component">
-        <b-table :data="items" :columns="columns" @click="myEvent" />
+        <b-table
+            :data="items"
+            :columns="columns"
+            :row-class='(row, index) => row.copied && "is-selected"'
+            @click="onRowClick"
+            />
     </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, reactive, toRefs, watch, onMounted, PropType } from '@vue/composition-api'
+import { SnackbarProgrammatic as Snackbar } from 'buefy'
 import { Dict, FilterTarget } from './toolbox'
 import settings from '../config/frontend.json'
 
@@ -18,6 +24,7 @@ interface ReceiveTarget {
     id: string,
     level: string,
     name: string
+    copied: boolean
 }
 
 export default defineComponent({
@@ -50,17 +57,22 @@ export default defineComponent({
             items: [],
         });
 
-        const myEvent = (e: Object) => {
-            let t = e as ReceiveTarget;
-            navigator.clipboard.writeText(t.id).then(
+        const onRowClick = (e: ReceiveTarget) => {
+            navigator.clipboard.writeText(e.id).then(
                 () => {
-                    console.log(`Copied ID(${t.id}) to clipboard!`);
+                    console.log(`Copied ID(${e.id}) to clipboard!`);
+                    e.copied = true
+                    Snackbar.open({
+                        message: `COPIED ID(${e.id})`,
+                        queue: false,
+                        duration: 2000,
+                    })
                 },
                 () => {
                     console.log("Unable to write to clipboard...")
                 }
             );
-        };
+        }
 
         const filtersUnshift = (r: ReceiveTarget) => {
             if (tableData.items.length > 19) {
@@ -70,7 +82,7 @@ export default defineComponent({
         }
 
         const filter = (r: ReceiveTarget) => {
-            console.log(r)
+            //console.log(r)
 
             if (props.filters.length) {
                 props.filters.some((t: FilterTarget) => {
@@ -87,7 +99,6 @@ export default defineComponent({
 
         watch(() => props.receiveStream, 
             (newValue, oldValue) => {
-                console.log("watch receiveStream")
                 tableData.items = []
             }
         );
@@ -103,6 +114,7 @@ export default defineComponent({
             ws.onmessage = (e) => {
                 //console.log(e)
                 let j: ReceiveTarget = JSON.parse(e.data);
+                j.copied = false
                 //console.log(j)
                 if (props.receiveStream) {
                     filter(j)
@@ -111,7 +123,7 @@ export default defineComponent({
         });
         return {
             ...toRefs(tableData),
-            myEvent
+            onRowClick,
         }
     }
 })
