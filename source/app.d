@@ -20,8 +20,8 @@ void safeWrite(string text)
 JSONValue parseText(JSONValue json)
 {
 	typeof(return) result;
-	//auto pattern = ctRegex!`救援ID:([0-9]{10})\s参戦者募集！\s\s難易度:([A-Z]*)\s(.*)降臨！`;
-	auto pattern = ctRegex!`([0-9A-F]{8})\s:参戦ID\s参加者募集！\sLv([0-9]*)\s(.*)`;
+	auto pattern = ctRegex!`救援ID:([0-9]{10})\s参戦者募集！\s\s難易度:([A-Z]*)\s(.*)降臨！`;
+	//auto pattern = ctRegex!`([0-9A-F]{8})\s:参戦ID\s参加者募集！\sLv([0-9]*)\s(.*)`;
 	auto m = matchFirst(json["text"].str, pattern);
 
 	result["id"] = m[1];
@@ -42,8 +42,8 @@ void readTweet()
 	]);
 
 	string url = "https://stream.twitter.com/1.1/statuses/filter.json";
-	//string[string] params = ["track":"参戦者募集！"];
-	string[string] params = ["track":"参加者募集！"];
+	string[string] params = ["track":"参戦者募集！"];
+	//string[string] params = ["track":"参加者募集！"];
 
 	writeln("start tweet reading ...");
 	foreach(line; t4d.stream(url, params))
@@ -57,7 +57,7 @@ void readTweet()
 		if(match(s, regex(r"\{.*\}"))){
 			auto j = parseJSON(s);
 
-			//if ("media" in j["entities"]) { continue; }
+			if ("media" in j["entities"]) { continue; }
 
 			j = parseText(j);
 			wsSend(j.toString);
