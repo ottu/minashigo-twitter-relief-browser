@@ -55,6 +55,7 @@ class Twitter {
 		return result;
 	}
 
+	SysTime lastReceivedTime;
 	void startStream()
 	{
 		lastReceivedTime = Clock.currTime;
