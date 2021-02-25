@@ -4,8 +4,10 @@ import std.stdio;
 import std.regex;
 import std.json;
 import std.parallelism;
+import std.concurrency;
 import std.algorithm;
 import std.uri;
+import std.net.curl;
 import core.thread;
 import settings;
 
@@ -16,54 +18,112 @@ void safeWrite(string text)
 	}
 }
 
-// 文字列から救援IDを抽出
-JSONValue parseText(JSONValue json)
-{
-	typeof(return) result;
-	auto pattern = ctRegex!`救援ID:([0-9]{10})\s参戦者募集！\s\s難易度:([A-Z]*)\s(.*)降臨！`;
-	//auto pattern = ctRegex!`([0-9A-F]{8})\s:参戦ID\s参加者募集！\sLv([0-9]*)\s(.*)`;
-	auto m = matchFirst(json["text"].str, pattern);
+class Twitter {
+	private Twitter4D t4d;
+	private string consumerKey;
+	private string consumerSecret;
+	private string accessToken;
+	private string accessTokenSecret;
 
-	result["id"] = m[1];
-	result["level"] = m[2];
-	result["name"] = m[3];
+	private auto pattern = ctRegex!`救援ID:([0-9]{10})\s参戦者募集！\s\s難易度:([A-Z]*)\s(.*)降臨！`;
+	//private auto pattern = ctRegex!`([0-9A-F]{8})\s:参戦ID\s参加者募集！\sLv([0-9]*)\s(.*)`;
 
-	return result;
-}
+	private bool readTweetTerminateFlag = false;
+	private string url = "https://stream.twitter.com/1.1/statuses/filter.json";
+	private string[string] params;
 
-bool readTweetTerminateFlag = false;
-void readTweet()
-{
-	Twitter4D t4d = new Twitter4D([
-		"consumerKey": twitterSettings.consumerKey,
-		"consumerSecret": twitterSettings.consumerSecret,
-		"accessToken": twitterSettings.accessToken,
-		"accessTokenSecret": twitterSettings.accessTokenSecret
-	]);
+	this(string CK, string CS, string AT, string AS) {
+		consumerKey = CK;
+		consumerSecret = CS;
+		accessToken = AT;
+		accessTokenSecret = AS;
 
-	string url = "https://stream.twitter.com/1.1/statuses/filter.json";
-	string[string] params = ["track":"参戦者募集！"];
-	//string[string] params = ["track":"参加者募集！"];
-
-	writeln("start tweet reading ...");
-	foreach(line; t4d.stream(url, params))
-	{
-		if(readTweetTerminateFlag) {
-			break;
-		}
-
-		writeln("stream readed...");
-		auto s = line.to!string;
-		if(match(s, regex(r"\{.*\}"))){
-			auto j = parseJSON(s);
-
-			if ("media" in j["entities"]) { continue; }
-
-			j = parseText(j);
-			wsSend(j.toString);
-		}
+		params = ["track":"参戦者募集！"];
+		//params = ["track":"参加者募集！"];
 	}
-	safeWrite("readTweet terminated.");
+	
+	// 文字列から救援IDを抽出
+	private JSONValue parseText(JSONValue json)
+	{
+		typeof(return) result;
+		auto m = matchFirst(json["text"].str, pattern);
+
+		result["id"] = m[1];
+		result["level"] = m[2];
+		result["name"] = m[3];
+
+		return result;
+	}
+
+	void startStream()
+	{
+		lastReceivedTime = Clock.currTime;
+		runTask((){watchStream();});
+		writeln("start tweet reading ...");
+
+		uint reconnectedCount = 0;
+		uint waitSeconds = 0;
+
+		while (!readTweetTerminateFlag) {
+			try
+			{
+				writefln("reconnectedCount: %s", reconnectedCount);
+
+				t4d = new Twitter4D([
+					"consumerKey": consumerKey,
+					"consumerSecret": consumerSecret,
+					"accessToken": accessToken,
+					"accessTokenSecret": accessTokenSecret
+				]);
+
+				foreach(line; t4d.stream(url, params))
+				{
+					if(readTweetTerminateFlag) { break;	}
+					lastReceivedTime = Clock.currTime;
+
+					writeln("stream readed...");
+					auto s = line.to!string;
+					if(match(s, regex(r"\{.*\}"))){
+						auto j = parseJSON(s);
+
+						if ("media" in j["entities"]) { continue; }
+
+						j = parseText(j);
+						wsSend(j.toString);
+					}
+				}
+			} catch (PriorityMessageException e) {
+				writeln(e.message);
+				t4d.destroy();
+			} finally {
+				if (reconnectedCount == 0) {
+					waitSeconds = 5;
+				} else {
+					sleep(dur!"seconds"(waitSeconds));
+					waitSeconds *= 2;
+				}
+				reconnectedCount += 1;
+			}
+		}
+
+		safeWrite("stop tweet reading.");
+	}
+
+	void stopStream()
+	{
+		readTweetTerminateFlag = true;
+	}
+
+	void watchStream()
+	{
+		writeln("start watchStream()");
+		while (!readTweetTerminateFlag) {
+			auto ct = Clock.currTime;
+			writeln(ct - lastReceivedTime);
+			sleep(dur!"seconds"(1));
+		}
+		writeln("stop watchStream()");
+	}
 }
 
 WebSocketWrapper [] wrappers;
@@ -110,27 +170,18 @@ void wsSend(string text)
 	}
 }
 
-//void test()
-//{
-//	while(true)
-//	{
-//		sleep(dur!("seconds")(3));
-//
-//		foreach(s; wrappers) {
-//			if (s.connected) {
-//				wsSend("{'test':'aaa'}");
-//			}
-//		}
-//	}
-//}
-
 void main()
 {
-	auto t = runTask(&readTweet);
-	//auto r = runTask(&test);
+	auto twitter = new Twitter(
+		twitterSettings.consumerKey,
+		twitterSettings.consumerSecret,
+		twitterSettings.accessToken,
+		twitterSettings.accessTokenSecret
+	);
+	auto t = runTask(()=>twitter.startStream());
 	scope(exit)
 	{
-		readTweetTerminateFlag = true;
+		twitter.stopStream();
 		t.join();
 		//r.join();
 	}
