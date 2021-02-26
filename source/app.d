@@ -9,6 +9,7 @@ import std.algorithm;
 import std.uri;
 import std.net.curl;
 import core.thread;
+import core.time;
 import settings;
 
 void safeWrite(string text)
@@ -63,13 +64,14 @@ class Twitter {
 		writeln("start tweet reading ...");
 
 		uint reconnectedCount = 0;
-		uint waitSeconds = 0;
+		writefln("reconnectedCount: %s", reconnectedCount);
+		auto waitMSec = msecs(250 * reconnectedCount);
+		writefln("  waitMSec: %s", waitMSec);
+		sleep(waitMSec);
 
 		while (!readTweetTerminateFlag) {
 			try
 			{
-				writefln("reconnectedCount: %s", reconnectedCount);
-
 				t4d = new Twitter4D([
 					"consumerKey": consumerKey,
 					"consumerSecret": consumerSecret,
@@ -94,16 +96,20 @@ class Twitter {
 					}
 				}
 			} catch (PriorityMessageException e) {
-				writeln(e.message);
-				t4d.destroy();
-			} finally {
-				if (reconnectedCount == 0) {
-					waitSeconds = 5;
-				} else {
-					sleep(dur!"seconds"(waitSeconds));
-					waitSeconds *= 2;
-				}
+				writeln("-----PriorityMessageException-----");
+				writeln("Twitter Streaming filter API connection closed.");
+				writeln("try reconnect...");
+				writeln("----------------------------------");
+				//writeln(e);
+				//一度 CurlExceptionを吐かれると、thisTid.mboxに例外情報が残ったままに
+				//なるっぽくて、それを取り除いてやらない限り同一プロセス上での
+				//再接続は永遠に出来ないと思われる。
+				auto ce = receiveOnly!(immutable(CurlException));
+				//writeln(ce);
+
 				reconnectedCount += 1;
+			} finally {
+				//pass
 			}
 		}
 
