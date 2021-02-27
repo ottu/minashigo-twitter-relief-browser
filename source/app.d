@@ -60,16 +60,19 @@ class Twitter {
 	void startStream()
 	{
 		lastReceivedTime = Clock.currTime;
-		runTask((){watchStream();});
-		writeln("start tweet reading ...");
-
 		uint reconnectedCount = 0;
-		writefln("reconnectedCount: %s", reconnectedCount);
-		auto waitMSec = msecs(250 * reconnectedCount);
-		writefln("  waitMSec: %s", waitMSec);
-		sleep(waitMSec);
+		JSONValue messageJson = [ "serverMessage": "reconnect" ];
 
+		//runTask((){watchStream();});
+
+		writeln("start tweet reading ...");
 		while (!readTweetTerminateFlag) {
+
+			writefln("reconnectedCount: %s", reconnectedCount);
+			auto waitMSec = msecs(250 * reconnectedCount);
+			writefln("  waitMSec: %s", waitMSec);
+			sleep(waitMSec);
+
 			try
 			{
 				t4d = new Twitter4D([
@@ -92,7 +95,7 @@ class Twitter {
 						if ("media" in j["entities"]) { continue; }
 
 						j = parseText(j);
-						wsSend(j.toString);
+						wsController.sendAll(j.toString);
 					}
 				}
 			} catch (PriorityMessageException e) {
@@ -106,7 +109,8 @@ class Twitter {
 				//再接続は永遠に出来ないと思われる。
 				auto ce = receiveOnly!(immutable(CurlException));
 				//writeln(ce);
-
+				
+				wsController.sendAll(messageJson.toString);
 				reconnectedCount += 1;
 			} finally {
 				//pass
@@ -133,49 +137,87 @@ class Twitter {
 	}
 }
 
-WebSocketWrapper [] wrappers;
-
-class WebSocketWrapper
+class WebSocketController
 {
-	private WebSocket socket;
-	alias socket this;
+	WebSocketWrapper [] wrappers;
 
-	bool waitTerminate = false;
-
-	this(WebSocket s)
+	class WebSocketWrapper
 	{
-		socket = s;
-	}
+		private WebSocket socket;
+		alias socket this;
 
-	void eventLoop()
-	{
-		while (socket.waitForData)
+		bool waitTerminate = false;
+		SysTime lastSendTime;
+
+		this(WebSocket s)
 		{
-			if (waitTerminate) { break; }
-
-			auto received = socket.receiveText;
-			safeWrite(received);
+			socket = s;
+			lastSendTime = Clock.currTime;
 		}
-		writeln("eventLoop exit");
+
+		void eventLoop()
+		{
+			while (socket.waitForData)
+			{
+				if (waitTerminate) { break; }
+
+				auto received = socket.receiveText;
+				safeWrite(received);
+			}
+			writeln("eventLoop exit");
+		}
 	}
-}
 
-void wsHandler(scope WebSocket socket)
-{
-	auto wrapper = new WebSocketWrapper(socket);
-	wrappers ~= wrapper;
-	wrapper.eventLoop();
-}
-
-void wsSend(string text)
-{
-	safeWrite(text);
-	foreach(s; wrappers)
+	void add(scope WebSocket socket)
 	{
-		if (!s.connected) { continue; }
-		s.send(text);
+		auto wrapper = new WebSocketWrapper(socket);
+		wrappers ~= wrapper;
+		wrapper.eventLoop();
+	}
+
+	void sendAll(string text)
+	{
+		safeWrite(text);
+		foreach(s; wrappers)
+		{
+			if (!s.connected) { continue; }
+			s.send(text);
+			s.lastSendTime = Clock.currTime;
+		}
+	}
+
+	private bool keepAliveEnable = true;
+	void stopKeepAlive()
+	{
+		keepAliveEnable = false;
+		foreach(s; wrappers)
+		{
+			s.waitTerminate = true;
+			s.close();
+		}
+	}
+
+	void runKeepAlive()
+	{
+		JSONValue j = [ "keepAlive": true ];
+
+		while (keepAliveEnable)
+		{
+			foreach(s; wrappers)
+			{
+				if (!s.connected) { continue; }
+
+				if ((Clock.currTime - s.lastSendTime) < dur!"seconds"(10)) { continue; }
+
+				s.send(j.toString);
+				s.lastSendTime = Clock.currTime;
+			}
+			sleep(seconds(1));
+		}
 	}
 }
+
+WebSocketController wsController;
 
 void main()
 {
@@ -190,7 +232,14 @@ void main()
 	{
 		twitter.stopStream();
 		t.join();
-		//r.join();
+	}
+
+	wsController = new WebSocketController;
+	auto kaTid = runTask(()=>wsController.runKeepAlive());
+	scope(exit)
+	{
+		wsController.stopKeepAlive();
+		kaTid.join();
 	}
 
 	auto settings = new HTTPServerSettings;
@@ -207,15 +256,10 @@ void main()
 	auto router = new URLRouter;
 	router.registerWebInterface(new WebService);
 	router.get("*", serveStaticFiles("public/"));
-	router.get("/ws", handleWebSockets((a)=>wsHandler(a)));
+	router.get("/ws", handleWebSockets((a)=>wsController.add(a)));
 
 	auto listener = listenHTTP(settings, router);
 	scope(exit) {
-		foreach(ws; wrappers) {
-			ws.waitTerminate = true;
-			ws.close();
-		}
-
 		listener.stopListening();
 	}
 

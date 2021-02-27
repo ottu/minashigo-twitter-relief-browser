@@ -113,11 +113,23 @@ export default defineComponent({
 
             ws.onmessage = (e) => {
                 //console.log(e)
-                let j: ReceiveTarget = JSON.parse(e.data);
-                j.copied = false
-                //console.log(j)
-                if (props.receiveStream) {
-                    filter(j)
+                let j = JSON.parse(e.data);
+                console.log(j);
+                if ("keepAlive" in j) {
+                    // pass
+                } else if ("serverMessage" in j) {
+                    Snackbar.open({
+                        message: `Streaming API Reconnect.`,
+                        queue: false,
+                        duration: 2000,
+                    })
+                } else {
+                    let rt: ReceiveTarget = JSON.parse(e.data);
+                    j.copied = false
+                    //console.log(j)
+                    if (props.receiveStream) {
+                        filter(rt);
+                    }
                 }
             }
         });
