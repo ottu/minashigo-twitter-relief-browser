@@ -1,0 +1,12 @@
+[Unit]
+Description=Minashigo no Shigoto Twitter Relief Search Service
+Wants=network.target
+After=systemd-networkd.service
+
+[Service]
+Restart=always
+Type=simple
+ExecStart=/home/hayato/Programming/D/project/minashigo/minashigo
+ExecStop=/home/hayato/Programming/D/project/minashigo/minashigo_killall.sh
+PIDFile=/home/hayato/Programming/D/project/minashigo/minashigo.pid
+User=hayato
