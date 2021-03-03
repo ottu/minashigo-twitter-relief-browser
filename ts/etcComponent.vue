@@ -1,6 +1,6 @@
 <template>
     <div id="etc-component">
-
+        <a href="https://twitter.com/mnstr02735500">連絡・意見先(Twitter)</a>
     </div>
 </template>
 
