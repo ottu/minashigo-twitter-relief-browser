@@ -118,8 +118,20 @@ export default defineComponent({
                 if ("keepAlive" in j) {
                     // pass
                 } else if ("serverMessage" in j) {
+                    let serverMessage = j["serverMessage"];
+                    let message = "";
+                    let type = "";
+                    if (serverMessage == "reconnect") {
+                        message = `Streaming API Reconnect.(${j["count"]} times.)`;
+                        type = "is-info";
+                    } else if (serverMessage == "reload") {
+                        message = "Please page reload."
+                        type = "is-warning"
+                    }
+
                     Snackbar.open({
-                        message: `Streaming API Reconnect.`,
+                        message: message,
+                        type: type,
                         queue: false,
                         duration: 2000,
                     })

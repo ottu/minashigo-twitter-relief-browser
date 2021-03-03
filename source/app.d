@@ -13,15 +13,24 @@ import std.uri;
 import std.net.curl;
 import std.file: thisExePath, chdir;
 import std.path: dirName;
+import std.format;
+import core.stdc.stdlib: exit;
 
 import twitter4d;
 
 import settings;
 
+class ReconnectedCountMaxException : Exception
+{
+	this(string msg, string file = __FILE__, size_t line = __LINE__) {
+		super(msg, file, line);
+	}
+}
+
 void safeWrite(string text)
 {
 	synchronized {
-		writeln(text);
+		logInfo(text);
 	}
 }
 
@@ -67,17 +76,29 @@ class Twitter {
 	{
 		lastReceivedTime = Clock.currTime;
 		uint reconnectedCount = 0;
-		JSONValue messageJson = [ "serverMessage": "reconnect" ];
+		JSONValue messageJson = [ "serverMessage": JSONValue(""), "count": JSONValue(0) ];
 
 		//runTask((){watchStream();});
 
-		writeln("start tweet reading ...");
+		safeWrite("start tweet reading ...");
 		while (!readTweetTerminateFlag) {
 
-			writefln("reconnectedCount: %s", reconnectedCount);
-			auto waitMSec = msecs(250 * reconnectedCount);
-			writefln("  waitMSec: %s", waitMSec);
-			sleep(waitMSec);
+			if (reconnectedCount >= 25) {
+				messageJson["serverMessage"] = JSONValue("reload");
+				wsController.sendAll(messageJson.toString);
+				//throw new ReconnectedCountMaxException("再接続回数が25回に達しました。");
+				exit(0);
+			} else if (reconnectedCount > 0) {
+				safeWrite("reconnectedCount: %s".format(reconnectedCount));
+
+				messageJson["serverMessage"] = JSONValue("reconnect");
+				messageJson["count"] = JSONValue(reconnectedCount);
+				wsController.sendAll(messageJson.toString);
+
+				auto waitMSec = msecs(250 * reconnectedCount);
+				safeWrite("  waitMSec: %s".format(waitMSec));
+				sleep(waitMSec);
+			}
 
 			try
 			{
@@ -93,7 +114,7 @@ class Twitter {
 					if(readTweetTerminateFlag) { break;	}
 					lastReceivedTime = Clock.currTime;
 
-					writeln("stream readed...");
+					//safeWrite("stream readed...");
 					auto s = line.to!string;
 					if(match(s, regex(r"\{.*\}"))){
 						auto j = parseJSON(s);
@@ -105,18 +126,17 @@ class Twitter {
 					}
 				}
 			} catch (PriorityMessageException e) {
-				writeln("-----PriorityMessageException-----");
-				writeln("Twitter Streaming filter API connection closed.");
-				writeln("try reconnect...");
-				writeln("----------------------------------");
-				//writeln(e);
+				safeWrite("-----PriorityMessageException-----");
+				safeWrite("Twitter Streaming filter API connection closed.");
+				safeWrite("try reconnect...");
+				safeWrite("----------------------------------");
+				//safeWrite(e);
 				//一度 CurlExceptionを吐かれると、thisTid.mboxに例外情報が残ったままに
 				//なるっぽくて、それを取り除いてやらない限り同一プロセス上での
 				//再接続は永遠に出来ないと思われる。
 				auto ce = receiveOnly!(immutable(CurlException));
-				//writeln(ce);
+				//safeWrite(ce);
 				
-				wsController.sendAll(messageJson.toString);
 				reconnectedCount += 1;
 			} finally {
 				//pass
@@ -133,13 +153,13 @@ class Twitter {
 
 	void watchStream()
 	{
-		writeln("start watchStream()");
+		safeWrite("start watchStream()");
 		while (!readTweetTerminateFlag) {
 			auto ct = Clock.currTime;
-			writeln(ct - lastReceivedTime);
+			safeWrite((ct - lastReceivedTime).to!string);
 			sleep(dur!"seconds"(1));
 		}
-		writeln("stop watchStream()");
+		safeWrite("stop watchStream()");
 	}
 }
 
@@ -170,7 +190,7 @@ class WebSocketController
 				auto received = socket.receiveText;
 				safeWrite(received);
 			}
-			writeln("eventLoop exit");
+			safeWrite("eventLoop exit");
 		}
 	}
 
