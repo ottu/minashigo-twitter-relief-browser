@@ -125,8 +125,8 @@ export default defineComponent({
                     })
                 } else {
                     let rt: ReceiveTarget = JSON.parse(e.data);
-                    j.copied = false
-                    //console.log(j)
+                    rt.copied = false
+                    console.log(rt)
                     if (props.receiveStream) {
                         filter(rt);
                     }

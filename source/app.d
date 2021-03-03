@@ -1,5 +1,8 @@
 import vibe.vibe;
-import twitter4d;
+import vibe.core.log;
+
+import core.thread;
+import core.time;
 import std.stdio;
 import std.regex;
 import std.json;
@@ -8,8 +11,11 @@ import std.concurrency;
 import std.algorithm;
 import std.uri;
 import std.net.curl;
-import core.thread;
-import core.time;
+import std.file: thisExePath, chdir;
+import std.path: dirName;
+
+import twitter4d;
+
 import settings;
 
 void safeWrite(string text)
@@ -262,6 +268,12 @@ void main()
 	scope(exit) {
 		listener.stopListening();
 	}
+
+	string exePath = dirName(thisExePath());
+	chdir(exePath);
+	//auto logger = cast(shared)new FileLogger(exePath ~ "/access.log");
+	//setLogLevel(LogLevel.warn);
+	//registerLogger(logger);
 
 	logInfo("application started.");
 	runApplication();
